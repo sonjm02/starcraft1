@@ -1,0 +1,79 @@
+.matchup-controls {
+  margin: -4px 0 16px;
+  padding: 13px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #091421;
+}
+
+.matchup-controls[hidden] {
+  display: none;
+}
+
+.matchup-title {
+  margin: 0 0 9px;
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 850;
+}
+
+.matchup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.matchup-btn {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 9px 7px;
+  color: var(--text);
+  background: #0b1728;
+  cursor: pointer;
+  transition: 0.16s ease;
+}
+
+.matchup-btn:hover {
+  transform: translateY(-1px);
+  border-color: #365473;
+}
+
+.matchup-btn strong,
+.matchup-btn small {
+  display: block;
+}
+
+.matchup-btn strong {
+  font-size: .92rem;
+  line-height: 1.1;
+}
+
+.matchup-btn small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: .67rem;
+  font-weight: 700;
+}
+
+.matchup-btn.active {
+  border-color: var(--primary);
+  background: rgba(56, 189, 248, .14);
+  box-shadow: inset 0 0 0 1px rgba(56, 189, 248, .16);
+}
+
+.matchup-btn.active strong {
+  color: #7dd3fc;
+}
+
+.badge-unit {
+  color: #e2e8f0;
+  background: #18263a;
+  border-color: #334155;
+}
+
+@media (max-width: 420px) {
+  .matchup-grid {
+    grid-template-columns: 1fr;
+  }
+}
