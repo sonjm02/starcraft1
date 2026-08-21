@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#08111f" />
+  <title>스타1 상성 훈련소</title>
+  <style>
+    :root {
+      --bg: #07101d;
+      --card: rgba(13, 25, 43, 0.94);
+      --text: #e8f0fb;
+      --muted: #93a4bb;
+      --line: #24364f;
+      --primary: #38bdf8;
+      --good: #34d399;
+      --bad: #fb7185;
+      --shadow: 0 22px 58px rgba(0, 0, 0, 0.34);
+      --radius: 22px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% -5%, rgba(56, 189, 248, 0.19), transparent 30rem),
+        radial-gradient(circle at 95% 5%, rgba(192, 132, 252, 0.17), transparent 28rem),
+        linear-gradient(180deg, var(--bg), #050a12 72%);
+    }
+    button, input { font: inherit; }
+    .app { width: min(1220px, calc(100% - 28px)); margin: 0 auto; padding: 28px 0 64px; }
+    header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; margin-bottom: 22px; }
+    h1 { margin: 0 0 9px; font-size: clamp(2rem, 4vw, 3.5rem); line-height: 1; letter-spacing: -0.055em; }
+    .lead { margin: 0; max-width: 780px; color: var(--muted); line-height: 1.65; }
+    .race-orb {
+      width: 82px; height: 82px; flex: 0 0 auto; border-radius: 50%; border: 1px solid #365473;
+      background: radial-gradient(circle at 35% 34%, #e0f2fe 0 4%, #38bdf8 5% 10%, transparent 11%), radial-gradient(circle at 50% 50%, rgba(56,189,248,.35), transparent 46%), conic-gradient(from 20deg, #0ea5e9, #1e293b, #a855f7, #1e293b, #0ea5e9);
+      box-shadow: 0 0 38px rgba(56, 189, 248, 0.22), var(--shadow); position: relative;
+    }
+    .race-orb::after { content: "BW"; position: absolute; inset: 0; display: grid; place-items: center; font-weight: 1000; letter-spacing: .08em; color: #f8fafc; text-shadow: 0 2px 8px #000; }
+    .main-grid { display: grid; grid-template-columns: minmax(330px, 430px) 1fr; gap: 20px; align-items: start; }
+    .card { background: var(--card); border: 1px solid rgba(57, 77, 105, 0.76); border-radius: var(--radius); box-shadow: var(--shadow); backdrop-filter: blur(12px); }
+    .quiz-card { position: sticky; top: 16px; padding: 22px; }
+    .section-title { margin: 0 0 13px; font-size: 1.08rem; letter-spacing: -0.02em; }
+    .tabs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 16px; }
+    .tab, .race-filter { border: 1px solid var(--line); color: var(--text); background: #0b1728; border-radius: 13px; padding: 10px 11px; font-weight: 850; cursor: pointer; transition: 0.16s ease; }
+    .tab:hover, .race-filter:hover, .btn:hover, .answer:hover:not(:disabled) { transform: translateY(-1px); }
+    .tab.active { border-color: var(--primary); background: var(--primary); color: #04121d; box-shadow: 0 10px 24px rgba(56, 189, 248, 0.23); }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 9px; margin: 12px 0 16px; }
+    .stat { border: 1px solid var(--line); background: #0a1524; border-radius: 15px; padding: 11px 9px; }
+    .stat strong { display: block; font-size: 1.35rem; line-height: 1.1; }
+    .stat span { color: var(--muted); font-size: .77rem; font-weight: 750; }
+    .question-box { border: 1px solid #1f6080; background: linear-gradient(180deg, rgba(14, 116, 144, .20), rgba(9, 21, 36, .80)); border-radius: 19px; padding: 17px; margin-bottom: 14px; }
+    .question-label { margin: 0 0 9px; color: #7dd3fc; font-size: .78rem; font-weight: 900; text-transform: uppercase; letter-spacing: .1em; }
+    .question-text { margin: 0 0 13px; font-size: 1.15rem; line-height: 1.5; font-weight: 900; letter-spacing: -0.02em; }
+    .badge-row { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .badge { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 7px 10px; font-size: .84rem; font-weight: 900; border: 1px solid transparent; }
+    .badge-terran { color: #dbeafe; background: rgba(59,130,246,.18); border-color: rgba(77,163,255,.50); }
+    .badge-zerg { color: #f3e8ff; background: rgba(168,85,247,.18); border-color: rgba(192,132,252,.50); }
+    .badge-protoss { color: #fef3c7; background: rgba(245,158,11,.16); border-color: rgba(248,204,93,.52); }
+    .badge-size { color: #e2e8f0; background: #18263a; border-color: #334155; }
+    .badge-normal { color: #e2e8f0; background: rgba(148,163,184,.16); border-color: rgba(148,163,184,.55); }
+    .badge-concussive { color: #ffedd5; background: rgba(249,115,22,.16); border-color: rgba(251,146,60,.58); }
+    .badge-explosive { color: #fee2e2; background: rgba(239,68,68,.16); border-color: rgba(239,68,68,.58); }
+    .arrow { color: var(--muted); font-weight: 1000; }
+    .answers { display: grid; grid-template-columns: repeat(2, 1fr); gap: 9px; margin-bottom: 12px; }
+    .answer { min-height: 61px; border: 2px solid var(--line); color: var(--text); background: #0b1728; border-radius: 17px; cursor: pointer; padding: 9px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; transition: 0.16s ease; }
+    .answer strong { font-size: 1.12rem; }
+    .answer small { color: var(--muted); font-weight: 700; }
+    .answer:disabled { cursor: default; }
+    .answer.correct { border-color: var(--good); background: rgba(16,185,129,.12); }
+    .answer.wrong { border-color: var(--bad); background: rgba(244,63,94,.10); opacity: .86; }
+    .feedback { min-height: 68px; border: 1px dashed #39506d; background: #091421; border-radius: 15px; padding: 12px 14px; color: var(--muted); font-weight: 720; line-height: 1.55; }
+    .feedback.good { color: #bbf7d0; border-color: #166534; background: rgba(20,83,45,.24); }
+    .feedback.bad { color: #fecdd3; border-color: #9f1239; background: rgba(136,19,55,.18); }
+    .actions { display: flex; gap: 9px; flex-wrap: wrap; margin-top: 13px; }
+    .btn { border: 1px solid transparent; border-radius: 13px; padding: 10px 12px; font-weight: 900; cursor: pointer; color: var(--text); background: #1b2a3e; transition: 0.16s ease; }
+    .btn.primary { background: var(--primary); color: #04121d; }
+    .btn.primary:hover { background: #7dd3fc; }
+    .btn.ghost { background: transparent; border-color: var(--line); color: var(--muted); }
+    .content-stack { display: grid; gap: 20px; }
+    .panel { padding: 22px; }
+    .panel-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; margin-bottom: 15px; }
+    .hint { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.55; }
+    .modifier-grid { display: grid; grid-template-columns: 1.2fr repeat(4, 1fr); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+    .modifier-grid > div { min-height: 50px; padding: 9px; display: grid; place-items: center; text-align: center; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); font-size: .87rem; font-weight: 820; }
+    .modifier-grid > div:nth-child(5n) { border-right: 0; }
+    .modifier-grid > div:nth-last-child(-n + 5) { border-bottom: 0; }
+    .modifier-grid .head { background: #112139; color: #cbd5e1; }
+    .modifier-grid .rowhead { justify-content: start; padding-left: 12px; background: #0b1728; }
+    .mod-100 { color: #86efac; } .mod-75 { color: #fde68a; } .mod-50 { color: #fdba74; } .mod-25 { color: #fda4af; }
+    .note { margin: 13px 0 0; color: var(--muted); line-height: 1.6; font-size: .87rem; }
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 13px; }
+    .race-filter.active { border-color: #64748b; background: #25364e; }
+    .search { width: min(260px, 100%); border: 1px solid var(--line); background: #07111e; color: var(--text); border-radius: 12px; padding: 10px 12px; outline: none; }
+    .search:focus { border-color: var(--primary); }
+    .unit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .unit-card { border: 1px solid var(--line); background: #091421; border-radius: 16px; padding: 13px; }
+    .unit-top { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; margin-bottom: 8px; }
+    .unit-name { font-weight: 950; letter-spacing: -0.02em; }
+    .unit-en { color: var(--muted); font-size: .74rem; margin-top: 2px; }
+    .unit-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .attack-line { display: flex; justify-content: space-between; gap: 10px; align-items: center; color: #cbd5e1; font-size: .83rem; padding-top: 7px; margin-top: 7px; border-top: 1px solid rgba(51,65,85,.65); }
+    .attack-line span:last-child { text-align: right; }
+    .counter-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .counter-card { border: 1px solid var(--line); background: #091421; border-radius: 16px; padding: 14px; }
+    .counter-card h3 { margin: 0 0 7px; font-size: 1rem; }
+    .counter-card p { margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.55; }
+    .counter-card strong { color: #e2e8f0; }
+    .source-note { font-size: .78rem; color: #6f829a; line-height: 1.55; margin-top: 14px; }
+    .celebration-layer { position: fixed; inset: 0; z-index: 9999; pointer-events: none; overflow: hidden; }
+    .celebration-piece { position: absolute; left: var(--x); top: var(--y); font-size: var(--size); opacity: 0; transform: translate(-50%, -50%) scale(.4); animation: pop 620ms ease-out forwards; animation-delay: var(--delay); }
+    @keyframes pop { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.4) rotate(0deg); } 20% { opacity: 1; transform: translate(-50%, -50%) scale(1.15) rotate(8deg); } 100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(.9) rotate(var(--rot)); } }
+    @media (max-width: 900px) { .main-grid { grid-template-columns: 1fr; } .quiz-card { position: static; } .panel-head { flex-direction: column; } .unit-grid, .counter-grid { grid-template-columns: 1fr; } .race-orb { width: 62px; height: 62px; } }
+    @media (max-width: 560px) { .app { width: min(100% - 18px, 1220px); padding-top: 18px; } header { align-items: center; } .lead { font-size: .9rem; } .quiz-card, .panel { padding: 16px; } .answers { grid-template-columns: 1fr; } .modifier-grid { grid-template-columns: 1.25fr repeat(4, .82fr); } .modifier-grid > div { padding: 7px 4px; font-size: .76rem; min-height: 46px; } }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <div>
+        <h1>스타1 상성 훈련소</h1>
+        <p class="lead">Brood War의 유닛 크기와 공격 피해 타입을 이용해 실제 데미지 보정 상성을 익히는 퀴즈입니다. 포켓몬 상성표처럼 규칙을 외우고, 유닛에 바로 적용해 볼 수 있습니다.</p>
+      </div>
+      <div class="race-orb" aria-hidden="true"></div>
+    </header>
+
+    <section class="main-grid">
+      <aside class="card quiz-card">
+        <h2 class="section-title">상성 퀴즈</h2>
+        <div class="tabs" role="tablist" aria-label="퀴즈 모드">
+          <button class="tab active" data-mode="rule" type="button">기본 규칙</button>
+          <button class="tab" data-mode="unit" type="button">유닛 적용</button>
+        </div>
+        <div class="stats" aria-label="퀴즈 통계">
+          <div class="stat"><strong id="totalCount">0</strong><span>푼 문제</span></div>
+          <div class="stat"><strong id="accuracy">0%</strong><span>정답률</span></div>
+          <div class="stat"><strong id="streak">0</strong><span>연속 정답</span></div>
+        </div>
+        <div class="question-box">
+          <p class="question-label">이번 문제</p>
+          <p id="questionText" class="question-text">피해 배율은?</p>
+          <div id="questionBadges" class="badge-row"></div>
+        </div>
+        <div id="answers" class="answers"></div>
+        <div id="feedback" class="feedback">정답을 고르면 바로 해설이 표시됩니다.</div>
+        <div class="actions">
+          <button id="nextBtn" class="btn primary" type="button">다음 문제</button>
+          <button id="wrongBtn" class="btn" type="button">틀린 문제 다시</button>
+          <button id="resetBtn" class="btn ghost" type="button">기록 초기화</button>
+        </div>
+      </aside>
+
+      <div class="content-stack">
+        <section class="card panel">
+          <div class="panel-head"><div><h2 class="section-title">피해 타입 × 유닛 크기</h2><p class="hint">아래 배율은 방어력 계산 뒤 HP에 적용되는 크기 보정입니다.</p></div></div>
+          <div class="modifier-grid" aria-label="스타크래프트 브루드워 피해 타입 상성표">
+            <div class="head">공격 타입</div><div class="head">소형</div><div class="head">중형</div><div class="head">대형/건물</div><div class="head">프로토스 실드</div>
+            <div class="rowhead"><span class="badge badge-normal">일반형</span></div><div class="mod-100">100%</div><div class="mod-100">100%</div><div class="mod-100">100%</div><div class="mod-100">100%</div>
+            <div class="rowhead"><span class="badge badge-concussive">진동형</span></div><div class="mod-100">100%</div><div class="mod-50">50%</div><div class="mod-25">25%</div><div class="mod-100">100%</div>
+            <div class="rowhead"><span class="badge badge-explosive">폭발형</span></div><div class="mod-50">50%</div><div class="mod-75">75%</div><div class="mod-100">100%</div><div class="mod-100">100%</div>
+          </div>
+          <p class="note">핵심 암기: <strong>진동형은 작은 유닛에 강하고</strong>, <strong>폭발형은 큰 유닛에 강합니다.</strong> 프로토스 실드는 유닛 크기와 피해 타입에 상관없이 항상 100% 피해를 받습니다. 유닛 적용 퀴즈의 프로토스 대상은 “실드가 소진된 뒤 HP 기준”으로 묻습니다.</p>
+        </section>
+
+        <section class="card panel">
+          <div class="panel-head">
+            <div><h2 class="section-title">유닛 상성 도감</h2><p class="hint">유닛의 크기와 지상/공중 공격 타입을 빠르게 확인할 수 있습니다.</p></div>
+            <input id="unitSearch" class="search" type="search" placeholder="유닛 검색 (예: 벌처, Dragoon)" aria-label="유닛 검색" />
+          </div>
+          <div class="filters" aria-label="종족 필터">
+            <button class="race-filter active" data-race="all" type="button">전체</button><button class="race-filter" data-race="terran" type="button">테란</button><button class="race-filter" data-race="zerg" type="button">저그</button><button class="race-filter" data-race="protoss" type="button">프로토스</button>
+          </div>
+          <div id="unitGrid" class="unit-grid"></div>
+        </section>
+
+        <section class="card panel">
+          <div class="panel-head"><div><h2 class="section-title">초보자용 실전 연결</h2><p class="hint">아래는 피해 타입 상성을 실제 교전에 연결한 대표 예시입니다. 사거리·스플래시·속도·업그레이드·물량에 따라 결과는 달라질 수 있습니다.</p></div></div>
+          <div class="counter-grid">
+            <article class="counter-card"><h3>벌처 → 질럿 / 저글링</h3><p><strong>벌처는 진동형</strong>, 질럿과 저글링은 <strong>소형</strong>이라 HP에 100%가 들어갑니다. 반대로 대형 드라군에게는 25%뿐이라 직접 화력은 크게 줄어듭니다.</p></article>
+            <article class="counter-card"><h3>탱크 → 드라군 / 골리앗</h3><p><strong>탱크는 폭발형</strong>, 드라군과 골리앗은 <strong>대형</strong>이라 100%를 받습니다. 소형 질럿은 기본적으로 50%지만 시즈 모드 스플래시 때문에 밀집하면 여전히 위험합니다.</p></article>
+            <article class="counter-card"><h3>드라군 / 히드라 → 대형</h3><p>둘 다 <strong>폭발형</strong>이라 대형 유닛에는 100%, 소형 유닛에는 50%입니다. 그래서 “표시 공격력만 보고” 소형과의 교환비를 예상하면 틀리기 쉽습니다.</p></article>
+            <article class="counter-card"><h3>골리앗 대공 → 뮤탈</h3><p>골리앗의 대공은 <strong>폭발형</strong>이고 뮤탈은 <strong>소형</strong>이라 크기 보정만 보면 50%입니다. 그래도 높은 대공 사거리와 2연타 때문에 실제 대공 핵심 유닛으로 쓰입니다.</p></article>
+          </div>
+          <p class="source-note">데이터 기준: StarCraft: Brood War 유닛 크기 및 Normal / Concussive / Explosive 피해 타입. 스킬 피해, 스플래시 세부 판정, 방어력, 업그레이드, 프로토스 실드의 별도 계산은 단순 배율 퀴즈에서 제외했습니다.</p>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const DAMAGE_TYPES = {
+      normal: { ko: "일반형", small: 1, medium: 1, large: 1 },
+      concussive: { ko: "진동형", small: 1, medium: 0.5, large: 0.25 },
+      explosive: { ko: "폭발형", small: 0.5, medium: 0.75, large: 1 }
+    };
+    const SIZE_LABEL = { small: "소형", medium: "중형", large: "대형" };
+    const RACE_LABEL = { terran: "테란", zerg: "저그", protoss: "프로토스" };
+    const AIR_UNITS = new Set(["wraith","dropship","sciencevessel","valkyrie","battlecruiser","mutalisk","scourge","queen","overlord","guardian","devourer","observer","shuttle","scout","corsair","arbiter","carrier"]);
+
+    const UNITS = [
+      { race: "terran", key: "scv", ko: "SCV", en: "SCV", size: "small", ground: "normal" },
+      { race: "terran", key: "marine", ko: "마린", en: "Marine", size: "small", ground: "normal", air: "normal" },
+      { race: "terran", key: "firebat", ko: "파이어뱃", en: "Firebat", size: "small", ground: "concussive" },
+      { race: "terran", key: "ghost", ko: "고스트", en: "Ghost", size: "small", ground: "concussive", air: "concussive" },
+      { race: "terran", key: "medic", ko: "메딕", en: "Medic", size: "small" },
+      { race: "terran", key: "vulture", ko: "벌처", en: "Vulture", size: "medium", ground: "concussive" },
+      { race: "terran", key: "spidermine", ko: "스파이더 마인", en: "Spider Mine", size: "small", ground: "explosive" },
+      { race: "terran", key: "siegetank", ko: "시즈 탱크", en: "Siege Tank", size: "large", ground: "explosive" },
+      { race: "terran", key: "goliath", ko: "골리앗", en: "Goliath", size: "large", ground: "normal", air: "explosive" },
+      { race: "terran", key: "wraith", ko: "레이스", en: "Wraith", size: "large", ground: "normal", air: "explosive" },
+      { race: "terran", key: "dropship", ko: "드랍십", en: "Dropship", size: "large" },
+      { race: "terran", key: "sciencevessel", ko: "사이언스 베슬", en: "Science Vessel", size: "large" },
+      { race: "terran", key: "valkyrie", ko: "발키리", en: "Valkyrie", size: "large", air: "explosive" },
+      { race: "terran", key: "battlecruiser", ko: "배틀크루저", en: "Battlecruiser", size: "large", ground: "normal", air: "normal" },
+      { race: "zerg", key: "drone", ko: "드론", en: "Drone", size: "small", ground: "normal" },
+      { race: "zerg", key: "zergling", ko: "저글링", en: "Zergling", size: "small", ground: "normal" },
+      { race: "zerg", key: "hydralisk", ko: "히드라리스크", en: "Hydralisk", size: "medium", ground: "explosive", air: "explosive" },
+      { race: "zerg", key: "lurker", ko: "러커", en: "Lurker", size: "medium", ground: "normal" },
+      { race: "zerg", key: "mutalisk", ko: "뮤탈리스크", en: "Mutalisk", size: "small", ground: "normal", air: "normal" },
+      { race: "zerg", key: "scourge", ko: "스커지", en: "Scourge", size: "small", air: "normal" },
+      { race: "zerg", key: "queen", ko: "퀸", en: "Queen", size: "medium" },
+      { race: "zerg", key: "defiler", ko: "디파일러", en: "Defiler", size: "medium" },
+      { race: "zerg", key: "overlord", ko: "오버로드", en: "Overlord", size: "large" },
+      { race: "zerg", key: "ultralisk", ko: "울트라리스크", en: "Ultralisk", size: "large", ground: "normal" },
+      { race: "zerg", key: "guardian", ko: "가디언", en: "Guardian", size: "large", ground: "normal" },
+      { race: "zerg", key: "devourer", ko: "디바우러", en: "Devourer", size: "large", air: "explosive" },
+      { race: "zerg", key: "infestedterran", ko: "인페스티드 테란", en: "Infested Terran", size: "small", ground: "explosive" },
+      { race: "protoss", key: "probe", ko: "프로브", en: "Probe", size: "small", ground: "normal", shield: true },
+      { race: "protoss", key: "zealot", ko: "질럿", en: "Zealot", size: "small", ground: "normal", shield: true },
+      { race: "protoss", key: "dragoon", ko: "드라군", en: "Dragoon", size: "large", ground: "explosive", air: "explosive", shield: true },
+      { race: "protoss", key: "hightemplar", ko: "하이 템플러", en: "High Templar", size: "small", shield: true },
+      { race: "protoss", key: "darktemplar", ko: "다크 템플러", en: "Dark Templar", size: "small", ground: "normal", shield: true },
+      { race: "protoss", key: "archon", ko: "아콘", en: "Archon", size: "large", ground: "normal", air: "normal", shield: true },
+      { race: "protoss", key: "darkarchon", ko: "다크 아콘", en: "Dark Archon", size: "large", shield: true },
+      { race: "protoss", key: "reaver", ko: "리버", en: "Reaver", size: "large", ground: "normal", shield: true },
+      { race: "protoss", key: "observer", ko: "옵저버", en: "Observer", size: "small", shield: true },
+      { race: "protoss", key: "shuttle", ko: "셔틀", en: "Shuttle", size: "large", shield: true },
+      { race: "protoss", key: "scout", ko: "스카웃", en: "Scout", size: "large", ground: "normal", air: "explosive", shield: true },
+      { race: "protoss", key: "corsair", ko: "커세어", en: "Corsair", size: "medium", air: "explosive", shield: true },
+      { race: "protoss", key: "arbiter", ko: "아비터", en: "Arbiter", size: "large", ground: "explosive", air: "explosive", shield: true },
+      { race: "protoss", key: "carrier", ko: "캐리어", en: "Carrier", size: "large", ground: "normal", air: "normal", shield: true }
+    ];
+
+    const ATTACKERS = UNITS.filter(unit => unit.ground || unit.air);
+    const QUIZ_OPTIONS = [
+      { value: 0.25, label: "25%", desc: "x0.25" }, { value: 0.5, label: "50%", desc: "x0.5" },
+      { value: 0.75, label: "75%", desc: "x0.75" }, { value: 1, label: "100%", desc: "x1" }
+    ];
+    const state = {
+      mode: "rule", current: null, answered: false,
+      total: Number(localStorage.getItem("starcraftQuizTotal") || 0),
+      correct: Number(localStorage.getItem("starcraftQuizCorrect") || 0),
+      streak: Number(localStorage.getItem("starcraftQuizStreak") || 0),
+      wrongQueue: JSON.parse(localStorage.getItem("starcraftQuizWrongQueue") || "[]"),
+      raceFilter: "all"
+    };
+    const $ = selector => document.querySelector(selector);
+    const answersEl = $("#answers"); const feedbackEl = $("#feedback"); const unitGridEl = $("#unitGrid");
+    const randomItem = list => list[Math.floor(Math.random() * list.length)];
+    const modifier = (damageType, size) => DAMAGE_TYPES[damageType][size];
+    const percent = value => `${Math.round(value * 100)}%`;
+    const typeBadge = type => `<span class="badge badge-${type}">${DAMAGE_TYPES[type].ko}</span>`;
+    const raceBadge = race => `<span class="badge badge-${race}">${RACE_LABEL[race]}</span>`;
+    const sizeBadge = size => `<span class="badge badge-size">${SIZE_LABEL[size]}</span>`;
+    const unitByKey = key => UNITS.find(unit => unit.key === key);
+
+    function makeRuleQuestion() {
+      const damageType = randomItem(Object.keys(DAMAGE_TYPES)); const size = randomItem(Object.keys(SIZE_LABEL));
+      return { mode: "rule", damageType, size, answer: modifier(damageType, size) };
+    }
+    function makeUnitQuestion() {
+      const attacker = randomItem(ATTACKERS); const attackKinds = [];
+      if (attacker.ground) attackKinds.push({ target: "ground", type: attacker.ground });
+      if (attacker.air) attackKinds.push({ target: "air", type: attacker.air });
+      const attack = randomItem(attackKinds);
+      const defenders = UNITS.filter(unit => attack.target === "air" ? AIR_UNITS.has(unit.key) : !AIR_UNITS.has(unit.key));
+      const defender = randomItem(defenders);
+      return { mode: "unit", attackerKey: attacker.key, defenderKey: defender.key, target: attack.target, damageType: attack.type, size: defender.size, answer: modifier(attack.type, defender.size) };
+    }
+    function makeQuestion(mode = state.mode) { return mode === "rule" ? makeRuleQuestion() : makeUnitQuestion(); }
+
+    function renderQuestion(question) {
+      state.current = question; state.answered = false;
+      if (question.mode === "rule") {
+        $("#questionText").textContent = `${DAMAGE_TYPES[question.damageType].ko} 공격이 ${SIZE_LABEL[question.size]} 유닛의 HP에 주는 피해 배율은?`;
+        $("#questionBadges").innerHTML = `${typeBadge(question.damageType)}<span class="arrow">→</span>${sizeBadge(question.size)}`;
+      } else {
+        const attacker = unitByKey(question.attackerKey); const defender = unitByKey(question.defenderKey);
+        const targetText = question.target === "air" ? "대공 공격" : "지상 공격";
+        const shieldText = defender.shield ? " (실드 소진 후 HP 기준)" : "";
+        $("#questionText").textContent = `${attacker.ko}의 ${targetText}이 ${defender.ko}${shieldText}에게 주는 크기 보정은?`;
+        $("#questionBadges").innerHTML = [raceBadge(attacker.race), `<span class="badge badge-size">${attacker.ko}</span>`, typeBadge(question.damageType), '<span class="arrow">→</span>', raceBadge(defender.race), `<span class="badge badge-size">${defender.ko} · ${SIZE_LABEL[defender.size]}</span>`].join("");
+      }
+      answersEl.innerHTML = QUIZ_OPTIONS.map(option => `<button class="answer" type="button" data-value="${option.value}"><strong>${option.label}</strong><small>${option.desc}</small></button>`).join("");
+      feedbackEl.className = "feedback"; feedbackEl.textContent = "정답을 고르면 바로 해설이 표시됩니다.";
+      document.querySelectorAll(".answer").forEach(button => button.addEventListener("click", () => checkAnswer(Number(button.dataset.value), button)));
+    }
+
+    function explain(question) {
+      if (question.mode === "rule") return `${DAMAGE_TYPES[question.damageType].ko}은 ${SIZE_LABEL[question.size]} 유닛에게 ${percent(question.answer)} 피해를 줍니다.`;
+      const attacker = unitByKey(question.attackerKey); const defender = unitByKey(question.defenderKey);
+      return `${attacker.ko}의 해당 공격은 ${DAMAGE_TYPES[question.damageType].ko}, ${defender.ko}은 ${SIZE_LABEL[defender.size]}이므로 HP에는 ${percent(question.answer)}가 적용됩니다.${defender.shield ? " 단, 남아 있는 프로토스 실드에는 100%가 적용됩니다." : ""}`;
+    }
+    function saveStats() {
+      localStorage.setItem("starcraftQuizTotal", String(state.total)); localStorage.setItem("starcraftQuizCorrect", String(state.correct));
+      localStorage.setItem("starcraftQuizStreak", String(state.streak)); localStorage.setItem("starcraftQuizWrongQueue", JSON.stringify(state.wrongQueue.slice(0, 40)));
+    }
+    function updateStats() {
+      $("#totalCount").textContent = state.total; $("#accuracy").textContent = state.total ? `${Math.round(state.correct / state.total * 100)}%` : "0%"; $("#streak").textContent = state.streak;
+    }
+    function celebrate(sourceEl) {
+      const rect = sourceEl.getBoundingClientRect(); const x = rect.left + rect.width / 2; const y = rect.top + rect.height / 2;
+      const layer = document.createElement("div"); layer.className = "celebration-layer"; const pieces = ["✓", "★", "✦", "⚡"];
+      for (let i = 0; i < 12; i += 1) {
+        const piece = document.createElement("span"); piece.className = "celebration-piece"; piece.textContent = pieces[i % pieces.length];
+        const angle = Math.PI * 2 * i / 12; const distance = 50 + Math.random() * 52;
+        piece.style.setProperty("--x", `${x}px`); piece.style.setProperty("--y", `${y}px`); piece.style.setProperty("--dx", `${Math.cos(angle) * distance}px`); piece.style.setProperty("--dy", `${Math.sin(angle) * distance - 12}px`); piece.style.setProperty("--rot", `${Math.round(-100 + Math.random() * 200)}deg`); piece.style.setProperty("--delay", `${Math.random() * 65}ms`); piece.style.setProperty("--size", `${17 + Math.random() * 10}px`); layer.appendChild(piece);
+      }
+      document.body.appendChild(layer); window.setTimeout(() => layer.remove(), 760);
+    }
+    function checkAnswer(selected, selectedButton) {
+      if (state.answered) return; state.answered = true; const question = state.current; const correct = selected === question.answer; state.total += 1;
+      if (correct) { state.correct += 1; state.streak += 1; feedbackEl.className = "feedback good"; feedbackEl.textContent = `정답입니다. ${explain(question)}`; }
+      else { state.streak = 0; state.wrongQueue.unshift(question); feedbackEl.className = "feedback bad"; feedbackEl.textContent = `아쉽습니다. 정답은 ${percent(question.answer)}입니다. ${explain(question)}`; }
+      document.querySelectorAll(".answer").forEach(button => { const value = Number(button.dataset.value); button.disabled = true; if (value === question.answer) button.classList.add("correct"); if (button === selectedButton && !correct) button.classList.add("wrong"); });
+      saveStats(); updateStats(); if (correct) { celebrate(selectedButton); window.setTimeout(() => renderQuestion(makeQuestion()), 420); }
+    }
+    function setMode(mode) {
+      state.mode = mode; document.querySelectorAll(".tab").forEach(button => button.classList.toggle("active", button.dataset.mode === mode)); renderQuestion(makeQuestion(mode));
+    }
+    function renderUnits() {
+      const query = $("#unitSearch").value.trim().toLowerCase();
+      const filtered = UNITS.filter(unit => { const raceOk = state.raceFilter === "all" || unit.race === state.raceFilter; const text = `${unit.ko} ${unit.en}`.toLowerCase(); return raceOk && (!query || text.includes(query)); });
+      unitGridEl.innerHTML = filtered.map(unit => `<article class="unit-card"><div class="unit-top"><div><div class="unit-name">${unit.ko}</div><div class="unit-en">${unit.en}</div></div>${raceBadge(unit.race)}</div><div class="unit-meta">${sizeBadge(unit.size)}${unit.shield ? '<span class="badge badge-protoss">실드 보유</span>' : ''}</div><div class="attack-line"><span>지상 공격</span><span>${unit.ground ? typeBadge(unit.ground) : "없음"}</span></div><div class="attack-line"><span>공중 공격</span><span>${unit.air ? typeBadge(unit.air) : "없음"}</span></div></article>`).join("");
+      if (!filtered.length) unitGridEl.innerHTML = '<div class="feedback">조건에 맞는 유닛이 없습니다.</div>';
+    }
+
+    document.querySelectorAll(".tab").forEach(button => button.addEventListener("click", () => setMode(button.dataset.mode)));
+    document.querySelectorAll(".race-filter").forEach(button => button.addEventListener("click", () => { state.raceFilter = button.dataset.race; document.querySelectorAll(".race-filter").forEach(item => item.classList.toggle("active", item === button)); renderUnits(); }));
+    $("#unitSearch").addEventListener("input", renderUnits);
+    $("#nextBtn").addEventListener("click", () => renderQuestion(makeQuestion()));
+    $("#wrongBtn").addEventListener("click", () => {
+      if (!state.wrongQueue.length) { feedbackEl.className = "feedback"; feedbackEl.textContent = "아직 다시 풀 틀린 문제가 없습니다."; return; }
+      const question = state.wrongQueue.shift(); state.mode = question.mode; document.querySelectorAll(".tab").forEach(button => button.classList.toggle("active", button.dataset.mode === state.mode)); saveStats(); renderQuestion(question);
+    });
+    $("#resetBtn").addEventListener("click", () => {
+      const ok = confirm("푼 문제 수, 정답률, 연속 정답, 틀린 문제 기록을 모두 초기화할까요?"); if (!ok) return;
+      state.total = 0; state.correct = 0; state.streak = 0; state.wrongQueue = []; saveStats(); updateStats(); feedbackEl.className = "feedback"; feedbackEl.textContent = "기록을 초기화했습니다.";
+    });
+    renderUnits(); updateStats(); renderQuestion(makeQuestion());
+  </script>
+</body>
+</html>
