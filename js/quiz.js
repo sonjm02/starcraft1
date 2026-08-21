@@ -9,8 +9,19 @@
   } = window.SC_DATA;
   const { $, percent, typeBadge, raceBadge, sizeBadge } = window.SC_UI;
 
+  const MATCHUPS = {
+    tvt: ["terran", "terran"],
+    tvp: ["terran", "protoss"],
+    tvz: ["terran", "zerg"],
+    pvp: ["protoss", "protoss"],
+    pvz: ["protoss", "zerg"],
+    zvz: ["zerg", "zerg"]
+  };
+
+  const storedMatchup = localStorage.getItem("starcraftQuizMatchup");
   const state = {
     mode: "rule",
+    matchup: MATCHUPS[storedMatchup] ? storedMatchup : "tvp",
     current: null,
     answered: false,
     total: Number(localStorage.getItem("starcraftQuizTotal") || 0),
@@ -22,6 +33,7 @@
   const randomItem = list => list[Math.floor(Math.random() * list.length)];
   const modifier = (damageType, size) => DAMAGE_TYPES[damageType][size];
   const unitByKey = key => UNITS.find(unit => unit.key === key);
+  const isAirUnit = unit => AIR_UNIT_KEYS.has(unit.key);
 
   function makeRuleQuestion() {
     const damageType = randomItem(Object.keys(DAMAGE_TYPES));
@@ -29,32 +41,59 @@
     return { mode: "rule", damageType, size, answer: modifier(damageType, size) };
   }
 
+  function matchupDirections(matchupKey) {
+    const [raceA, raceB] = MATCHUPS[matchupKey];
+    if (raceA === raceB) return [[raceA, raceB]];
+    return [[raceA, raceB], [raceB, raceA]];
+  }
+
   function makeUnitQuestion() {
-    const attacker = randomItem(ATTACKERS);
-    const attacks = [];
-    if (attacker.ground) attacks.push({ target: "ground", type: attacker.ground });
-    if (attacker.air) attacks.push({ target: "air", type: attacker.air });
+    const candidates = [];
 
-    const attack = randomItem(attacks);
-    const defenders = UNITS.filter(unit => {
-      const isAirTarget = AIR_UNIT_KEYS.has(unit.key);
-      return attack.target === "air" ? isAirTarget : !isAirTarget;
+    matchupDirections(state.matchup).forEach(([attackerRace, defenderRace]) => {
+      ATTACKERS.filter(unit => unit.race === attackerRace).forEach(attacker => {
+        const attacks = [];
+        if (attacker.ground) attacks.push({ target: "ground", type: attacker.ground });
+        if (attacker.air) attacks.push({ target: "air", type: attacker.air });
+
+        attacks.forEach(attack => {
+          UNITS.filter(unit => {
+            if (unit.race !== defenderRace) return false;
+            return attack.target === "air" ? isAirUnit(unit) : !isAirUnit(unit);
+          }).forEach(defender => {
+            candidates.push({
+              mode: "unit",
+              matchup: state.matchup,
+              attackerKey: attacker.key,
+              defenderKey: defender.key,
+              target: attack.target,
+              damageType: attack.type,
+              size: defender.size,
+              answer: modifier(attack.type, defender.size)
+            });
+          });
+        });
+      });
     });
-    const defender = randomItem(defenders);
 
-    return {
-      mode: "unit",
-      attackerKey: attacker.key,
-      defenderKey: defender.key,
-      target: attack.target,
-      damageType: attack.type,
-      size: defender.size,
-      answer: modifier(attack.type, defender.size)
-    };
+    return randomItem(candidates);
   }
 
   function makeQuestion(mode = state.mode) {
     return mode === "rule" ? makeRuleQuestion() : makeUnitQuestion();
+  }
+
+  function syncControls() {
+    document.querySelectorAll(".tab").forEach(button => {
+      button.classList.toggle("active", button.dataset.mode === state.mode);
+    });
+
+    const controls = $("#matchupControls");
+    controls.hidden = state.mode !== "unit";
+
+    document.querySelectorAll(".matchup-btn").forEach(button => {
+      button.classList.toggle("active", button.dataset.matchup === state.matchup);
+    });
   }
 
   function renderQuestion(question) {
@@ -73,11 +112,10 @@
       $("#questionText").textContent = `${attacker.ko}의 ${targetText}이 ${defender.ko}${shieldText}에게 주는 크기 보정은?`;
       $("#questionBadges").innerHTML = [
         raceBadge(attacker.race),
-        `<span class="badge badge-size">${attacker.ko}</span>`,
-        typeBadge(question.damageType),
+        `<span class="badge badge-unit">${attacker.ko}</span>`,
         '<span class="arrow">→</span>',
         raceBadge(defender.race),
-        `<span class="badge badge-size">${defender.ko} · ${SIZE_LABEL[defender.size]}</span>`
+        `<span class="badge badge-unit">${defender.ko}</span>`
       ].join("");
     }
 
@@ -112,6 +150,7 @@
     localStorage.setItem("starcraftQuizCorrect", String(state.correct));
     localStorage.setItem("starcraftQuizStreak", String(state.streak));
     localStorage.setItem("starcraftQuizWrongQueue", JSON.stringify(state.wrongQueue.slice(0, 40)));
+    localStorage.setItem("starcraftQuizMatchup", state.matchup);
   }
 
   function updateStats() {
@@ -187,10 +226,16 @@
 
   function setMode(mode) {
     state.mode = mode;
-    document.querySelectorAll(".tab").forEach(button => {
-      button.classList.toggle("active", button.dataset.mode === mode);
-    });
+    syncControls();
     renderQuestion(makeQuestion(mode));
+  }
+
+  function setMatchup(matchup) {
+    if (!MATCHUPS[matchup]) return;
+    state.matchup = matchup;
+    saveStats();
+    syncControls();
+    if (state.mode === "unit") renderQuestion(makeUnitQuestion());
   }
 
   function reviewWrong() {
@@ -203,9 +248,10 @@
 
     const question = state.wrongQueue.shift();
     state.mode = question.mode;
-    document.querySelectorAll(".tab").forEach(button => {
-      button.classList.toggle("active", button.dataset.mode === state.mode);
-    });
+    if (question.mode === "unit" && MATCHUPS[question.matchup]) {
+      state.matchup = question.matchup;
+    }
+    syncControls();
     saveStats();
     renderQuestion(question);
   }
@@ -228,10 +274,14 @@
     document.querySelectorAll(".tab").forEach(button => {
       button.addEventListener("click", () => setMode(button.dataset.mode));
     });
+    document.querySelectorAll(".matchup-btn").forEach(button => {
+      button.addEventListener("click", () => setMatchup(button.dataset.matchup));
+    });
     $("#nextBtn").addEventListener("click", () => renderQuestion(makeQuestion()));
     $("#wrongBtn").addEventListener("click", reviewWrong);
     $("#resetBtn").addEventListener("click", resetStats);
 
+    syncControls();
     updateStats();
     renderQuestion(makeQuestion());
   }
