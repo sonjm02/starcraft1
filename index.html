@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#08111f" />
   <title>스타1 상성 훈련소</title>
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/quiz.css" />
 </head>
 <body>
   <main class="app">
@@ -24,6 +25,18 @@
         <div class="tabs" role="tablist" aria-label="퀴즈 모드">
           <button class="tab active" data-mode="rule" type="button">기본 규칙</button>
           <button class="tab" data-mode="unit" type="button">유닛 적용</button>
+        </div>
+
+        <div id="matchupControls" class="matchup-controls" hidden>
+          <p class="matchup-title">유닛 적용 대진 선택</p>
+          <div class="matchup-grid" role="group" aria-label="유닛 적용 대진">
+            <button class="matchup-btn" data-matchup="tvt" type="button"><strong>TvT</strong><small>테란 vs 테란</small></button>
+            <button class="matchup-btn active" data-matchup="tvp" type="button"><strong>TvP</strong><small>테란 vs 프로토스</small></button>
+            <button class="matchup-btn" data-matchup="tvz" type="button"><strong>TvZ</strong><small>테란 vs 저그</small></button>
+            <button class="matchup-btn" data-matchup="pvp" type="button"><strong>PvP</strong><small>프로토스 vs 프로토스</small></button>
+            <button class="matchup-btn" data-matchup="pvz" type="button"><strong>PvZ</strong><small>프로토스 vs 저그</small></button>
+            <button class="matchup-btn" data-matchup="zvz" type="button"><strong>ZvZ</strong><small>저그 vs 저그</small></button>
+          </div>
         </div>
 
         <div class="stats" aria-label="퀴즈 통계">
