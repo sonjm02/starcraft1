@@ -8,6 +8,7 @@
     QUIZ_OPTIONS
   } = window.SC_DATA;
   const { $, percent, typeBadge, raceBadge, sizeBadge } = window.SC_UI;
+  const Knowledge = window.SCKnowledge;
 
   const MATCHUPS = {
     tvt: ["terran", "terran"],
@@ -19,9 +20,14 @@
   };
 
   const storedMatchup = localStorage.getItem("starcraftQuizMatchup");
+  const storedKnowledgeRace = localStorage.getItem("starcraftKnowledgeRace");
+  const storedKnowledgeTopic = localStorage.getItem("starcraftKnowledgeTopic");
+
   const state = {
     mode: "rule",
     matchup: MATCHUPS[storedMatchup] ? storedMatchup : "tvp",
+    knowledgeRace: ["terran", "protoss", "zerg"].includes(storedKnowledgeRace) ? storedKnowledgeRace : "terran",
+    knowledgeTopic: ["mixed", "attack", "size"].includes(storedKnowledgeTopic) ? storedKnowledgeTopic : "mixed",
     current: null,
     answered: false,
     total: Number(localStorage.getItem("starcraftQuizTotal") || 0),
@@ -79,8 +85,14 @@
     return randomItem(candidates);
   }
 
+  function makeKnowledgeQuestion() {
+    return Knowledge.makeQuestion(state.knowledgeRace, state.knowledgeTopic);
+  }
+
   function makeQuestion(mode = state.mode) {
-    return mode === "rule" ? makeRuleQuestion() : makeUnitQuestion();
+    if (mode === "rule") return makeRuleQuestion();
+    if (mode === "unit") return makeUnitQuestion();
+    return makeKnowledgeQuestion();
   }
 
   function syncControls() {
@@ -88,12 +100,24 @@
       button.classList.toggle("active", button.dataset.mode === state.mode);
     });
 
-    const controls = $("#matchupControls");
-    controls.hidden = state.mode !== "unit";
+    $("#matchupControls").hidden = state.mode !== "unit";
+    $("#knowledgeControls").hidden = state.mode !== "knowledge";
 
     document.querySelectorAll(".matchup-btn").forEach(button => {
       button.classList.toggle("active", button.dataset.matchup === state.matchup);
     });
+
+    document.querySelectorAll(".knowledge-race-btn").forEach(button => {
+      button.classList.toggle("active", button.dataset.knowledgeRace === state.knowledgeRace);
+    });
+
+    document.querySelectorAll(".knowledge-topic-btn").forEach(button => {
+      button.classList.toggle("active", button.dataset.knowledgeTopic === state.knowledgeTopic);
+    });
+  }
+
+  function optionsFor(question) {
+    return question.mode === "knowledge" ? Knowledge.optionsFor(question) : QUIZ_OPTIONS;
   }
 
   function renderQuestion(question) {
@@ -103,7 +127,7 @@
     if (question.mode === "rule") {
       $("#questionText").textContent = `${DAMAGE_TYPES[question.damageType].ko} 공격이 ${SIZE_LABEL[question.size]} 유닛의 HP에 주는 피해 배율은?`;
       $("#questionBadges").innerHTML = `${typeBadge(question.damageType)}<span class="arrow">→</span>${sizeBadge(question.size)}`;
-    } else {
+    } else if (question.mode === "unit") {
       const attacker = unitByKey(question.attackerKey);
       const defender = unitByKey(question.defenderKey);
       const targetText = question.target === "air" ? "대공 공격" : "지상 공격";
@@ -117,9 +141,12 @@
         raceBadge(defender.race),
         `<span class="badge badge-unit">${defender.ko}</span>`
       ].join("");
+    } else {
+      $("#questionText").textContent = Knowledge.promptFor(question);
+      $("#questionBadges").innerHTML = Knowledge.badgesFor(question);
     }
 
-    $("#answers").innerHTML = QUIZ_OPTIONS.map(option => `
+    $("#answers").innerHTML = optionsFor(question).map(option => `
       <button class="answer" type="button" data-value="${option.value}">
         <strong>${option.label}</strong>
         <small>${option.desc}</small>
@@ -131,7 +158,7 @@
     feedback.textContent = "정답을 고르면 바로 해설이 표시됩니다.";
 
     document.querySelectorAll(".answer").forEach(button => {
-      button.addEventListener("click", () => checkAnswer(Number(button.dataset.value), button));
+      button.addEventListener("click", () => checkAnswer(button.dataset.value, button));
     });
   }
 
@@ -140,9 +167,18 @@
       return `${DAMAGE_TYPES[question.damageType].ko}은 ${SIZE_LABEL[question.size]} 유닛에게 ${percent(question.answer)} 피해를 줍니다.`;
     }
 
+    if (question.mode === "knowledge") {
+      return Knowledge.explain(question);
+    }
+
     const attacker = unitByKey(question.attackerKey);
     const defender = unitByKey(question.defenderKey);
     return `${attacker.ko}의 해당 공격은 ${DAMAGE_TYPES[question.damageType].ko}, ${defender.ko}은 ${SIZE_LABEL[defender.size]}이므로 HP에는 ${percent(question.answer)}가 적용됩니다.${defender.shield ? " 단, 남아 있는 프로토스 실드에는 100%가 적용됩니다." : ""}`;
+  }
+
+  function answerLabel(question) {
+    if (question.mode === "knowledge") return Knowledge.answerLabel(question);
+    return percent(question.answer);
   }
 
   function saveStats() {
@@ -151,6 +187,8 @@
     localStorage.setItem("starcraftQuizStreak", String(state.streak));
     localStorage.setItem("starcraftQuizWrongQueue", JSON.stringify(state.wrongQueue.slice(0, 40)));
     localStorage.setItem("starcraftQuizMatchup", state.matchup);
+    localStorage.setItem("starcraftKnowledgeRace", state.knowledgeRace);
+    localStorage.setItem("starcraftKnowledgeTopic", state.knowledgeTopic);
   }
 
   function updateStats() {
@@ -192,7 +230,7 @@
     state.answered = true;
 
     const question = state.current;
-    const correct = selected === question.answer;
+    const correct = selected === String(question.answer);
     const feedback = $("#feedback");
     state.total += 1;
 
@@ -205,13 +243,12 @@
       state.streak = 0;
       state.wrongQueue.unshift(question);
       feedback.className = "feedback bad";
-      feedback.textContent = `아쉽습니다. 정답은 ${percent(question.answer)}입니다. ${explain(question)}`;
+      feedback.textContent = `아쉽습니다. 정답은 ${answerLabel(question)}입니다. ${explain(question)}`;
     }
 
     document.querySelectorAll(".answer").forEach(button => {
-      const value = Number(button.dataset.value);
       button.disabled = true;
-      if (value === question.answer) button.classList.add("correct");
+      if (button.dataset.value === String(question.answer)) button.classList.add("correct");
       if (button === selectedButton && !correct) button.classList.add("wrong");
     });
 
@@ -225,6 +262,7 @@
   }
 
   function setMode(mode) {
+    if (!["rule", "unit", "knowledge"].includes(mode)) return;
     state.mode = mode;
     syncControls();
     renderQuestion(makeQuestion(mode));
@@ -238,6 +276,22 @@
     if (state.mode === "unit") renderQuestion(makeUnitQuestion());
   }
 
+  function setKnowledgeRace(race) {
+    if (!["terran", "protoss", "zerg"].includes(race)) return;
+    state.knowledgeRace = race;
+    saveStats();
+    syncControls();
+    if (state.mode === "knowledge") renderQuestion(makeKnowledgeQuestion());
+  }
+
+  function setKnowledgeTopic(topic) {
+    if (!["mixed", "attack", "size"].includes(topic)) return;
+    state.knowledgeTopic = topic;
+    saveStats();
+    syncControls();
+    if (state.mode === "knowledge") renderQuestion(makeKnowledgeQuestion());
+  }
+
   function reviewWrong() {
     const feedback = $("#feedback");
     if (!state.wrongQueue.length) {
@@ -248,9 +302,20 @@
 
     const question = state.wrongQueue.shift();
     state.mode = question.mode;
+
     if (question.mode === "unit" && MATCHUPS[question.matchup]) {
       state.matchup = question.matchup;
     }
+
+    if (question.mode === "knowledge") {
+      if (["terran", "protoss", "zerg"].includes(question.knowledgeRace)) {
+        state.knowledgeRace = question.knowledgeRace;
+      }
+      if (["mixed", "attack", "size"].includes(question.knowledgeScopeTopic)) {
+        state.knowledgeTopic = question.knowledgeScopeTopic;
+      }
+    }
+
     syncControls();
     saveStats();
     renderQuestion(question);
@@ -276,6 +341,12 @@
     });
     document.querySelectorAll(".matchup-btn").forEach(button => {
       button.addEventListener("click", () => setMatchup(button.dataset.matchup));
+    });
+    document.querySelectorAll(".knowledge-race-btn").forEach(button => {
+      button.addEventListener("click", () => setKnowledgeRace(button.dataset.knowledgeRace));
+    });
+    document.querySelectorAll(".knowledge-topic-btn").forEach(button => {
+      button.addEventListener("click", () => setKnowledgeTopic(button.dataset.knowledgeTopic));
     });
     $("#nextBtn").addEventListener("click", () => renderQuestion(makeQuestion()));
     $("#wrongBtn").addEventListener("click", reviewWrong);
