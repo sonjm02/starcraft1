@@ -25,6 +25,7 @@
         <div class="tabs" role="tablist" aria-label="퀴즈 모드">
           <button class="tab active" data-mode="rule" type="button">기본 규칙</button>
           <button class="tab" data-mode="unit" type="button">유닛 적용</button>
+          <button class="tab" data-mode="knowledge" type="button">유닛 지식</button>
         </div>
 
         <div id="matchupControls" class="matchup-controls" hidden>
@@ -36,6 +37,28 @@
             <button class="matchup-btn" data-matchup="pvp" type="button"><strong>PvP</strong><small>프로토스 vs 프로토스</small></button>
             <button class="matchup-btn" data-matchup="pvz" type="button"><strong>PvZ</strong><small>프로토스 vs 저그</small></button>
             <button class="matchup-btn" data-matchup="zvz" type="button"><strong>ZvZ</strong><small>저그 vs 저그</small></button>
+          </div>
+        </div>
+
+        <div id="knowledgeControls" class="knowledge-controls" hidden>
+          <p class="matchup-title">유닛 지식 범위</p>
+
+          <div class="knowledge-control-group">
+            <span class="knowledge-control-label">종족</span>
+            <div class="knowledge-grid" role="group" aria-label="유닛 지식 종족">
+              <button class="knowledge-btn knowledge-race-btn active" data-knowledge-race="terran" type="button">테란</button>
+              <button class="knowledge-btn knowledge-race-btn" data-knowledge-race="protoss" type="button">프로토스</button>
+              <button class="knowledge-btn knowledge-race-btn" data-knowledge-race="zerg" type="button">저그</button>
+            </div>
+          </div>
+
+          <div class="knowledge-control-group">
+            <span class="knowledge-control-label">문제 종류</span>
+            <div class="knowledge-grid" role="group" aria-label="유닛 지식 문제 종류">
+              <button class="knowledge-btn knowledge-topic-btn active" data-knowledge-topic="mixed" type="button">섞어서</button>
+              <button class="knowledge-btn knowledge-topic-btn" data-knowledge-topic="attack" type="button">공격 형태</button>
+              <button class="knowledge-btn knowledge-topic-btn" data-knowledge-topic="size" type="button">유닛 크기</button>
+            </div>
           </div>
         </div>
 
@@ -153,6 +176,7 @@
 
   <script src="js/data.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/knowledge.js"></script>
   <script src="js/quiz.js"></script>
   <script src="js/catalog.js"></script>
   <script src="js/app.js"></script>
