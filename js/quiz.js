@@ -9,6 +9,7 @@
   } = window.SC_DATA;
   const { $, percent, typeBadge, raceBadge, sizeBadge } = window.SC_UI;
   const Knowledge = window.SCKnowledge;
+  const Game = window.SCGame;
 
   const MATCHUPS = {
     tvt: ["terran", "terran"],
@@ -19,12 +20,15 @@
     zvz: ["zerg", "zerg"]
   };
 
+  const PLAY_MODES = ["practice", "time", "score"];
   const storedMatchup = localStorage.getItem("starcraftQuizMatchup");
   const storedKnowledgeRace = localStorage.getItem("starcraftKnowledgeRace");
   const storedKnowledgeTopic = localStorage.getItem("starcraftKnowledgeTopic");
+  const storedPlayMode = localStorage.getItem("starcraftPlayMode");
 
   const state = {
     mode: "rule",
+    playMode: PLAY_MODES.includes(storedPlayMode) ? storedPlayMode : "practice",
     matchup: MATCHUPS[storedMatchup] ? storedMatchup : "tvp",
     knowledgeRace: ["terran", "protoss", "zerg"].includes(storedKnowledgeRace) ? storedKnowledgeRace : "terran",
     knowledgeTopic: ["mixed", "attack", "size"].includes(storedKnowledgeTopic) ? storedKnowledgeTopic : "mixed",
@@ -35,6 +39,8 @@
     streak: Number(localStorage.getItem("starcraftQuizStreak") || 0),
     wrongQueue: JSON.parse(localStorage.getItem("starcraftQuizWrongQueue") || "[]")
   };
+
+  let pendingNextTimer = null;
 
   const randomItem = list => list[Math.floor(Math.random() * list.length)];
   const modifier = (damageType, size) => DAMAGE_TYPES[damageType][size];
@@ -95,6 +101,32 @@
     return makeKnowledgeQuestion();
   }
 
+  function currentScopeKey() {
+    if (state.mode === "rule") return "rule";
+    if (state.mode === "unit") return `unit:${state.matchup}`;
+    return `knowledge:${state.knowledgeRace}:${state.knowledgeTopic}`;
+  }
+
+  function cancelNextQuestion() {
+    if (pendingNextTimer) {
+      window.clearTimeout(pendingNextTimer);
+      pendingNextTimer = null;
+    }
+  }
+
+  function setSetupDisabled(disabled) {
+    document.querySelectorAll(".tab, .matchup-btn, .knowledge-btn, .play-mode-btn").forEach(button => {
+      button.disabled = disabled;
+    });
+  }
+
+  function syncActionButtons() {
+    const challenge = state.playMode !== "practice";
+    $("#nextBtn").hidden = challenge;
+    $("#wrongBtn").hidden = challenge;
+    $("#resetBtn").disabled = Game.isActive();
+  }
+
   function syncControls() {
     document.querySelectorAll(".tab").forEach(button => {
       button.classList.toggle("active", button.dataset.mode === state.mode);
@@ -102,6 +134,7 @@
 
     $("#matchupControls").hidden = state.mode !== "unit";
     $("#knowledgeControls").hidden = state.mode !== "knowledge";
+    $("#challengePanel").hidden = state.playMode === "practice";
 
     document.querySelectorAll(".matchup-btn").forEach(button => {
       button.classList.toggle("active", button.dataset.matchup === state.matchup);
@@ -114,6 +147,14 @@
     document.querySelectorAll(".knowledge-topic-btn").forEach(button => {
       button.classList.toggle("active", button.dataset.knowledgeTopic === state.knowledgeTopic);
     });
+
+    document.querySelectorAll(".play-mode-btn").forEach(button => {
+      button.classList.toggle("active", button.dataset.playMode === state.playMode);
+    });
+
+    $(".quiz-card").classList.toggle("challenge-active", Game.isActive());
+    setSetupDisabled(Game.isActive());
+    syncActionButtons();
   }
 
   function optionsFor(question) {
@@ -155,7 +196,9 @@
 
     const feedback = $("#feedback");
     feedback.className = "feedback";
-    feedback.textContent = "정답을 고르면 바로 해설이 표시됩니다.";
+    feedback.textContent = state.playMode === "practice"
+      ? "정답을 고르면 바로 해설이 표시됩니다."
+      : "빠르게 정답을 선택하세요.";
 
     document.querySelectorAll(".answer").forEach(button => {
       button.addEventListener("click", () => checkAnswer(button.dataset.value, button));
@@ -189,6 +232,7 @@
     localStorage.setItem("starcraftQuizMatchup", state.matchup);
     localStorage.setItem("starcraftKnowledgeRace", state.knowledgeRace);
     localStorage.setItem("starcraftKnowledgeTopic", state.knowledgeTopic);
+    localStorage.setItem("starcraftPlayMode", state.playMode);
   }
 
   function updateStats() {
@@ -225,8 +269,112 @@
     window.setTimeout(() => layer.remove(), 760);
   }
 
+  function recordText(playMode = state.playMode) {
+    const record = Game.getRecord(currentScopeKey(), playMode);
+    if (!record) return "기록 없음";
+    if (playMode === "time") {
+      return `${record.correct}/30 · ${Game.formatTime(record.elapsedMs)}`;
+    }
+    return `${record.correct}점`;
+  }
+
+  function updateChallengeRecord() {
+    if (state.playMode === "practice") return;
+    $("#challengeRecord").textContent = recordText();
+  }
+
+  function updateChallengeHud(snap) {
+    if (state.playMode === "time") {
+      $("#challengePrimaryLabel").textContent = "진행";
+      $("#challengePrimary").textContent = `${Math.min(snap.answered, Game.TIME_ATTACK_COUNT)}/${Game.TIME_ATTACK_COUNT}`;
+      $("#challengeClockLabel").textContent = "시간";
+      $("#challengeClock").textContent = Game.formatTime(snap.elapsedMs);
+    } else {
+      $("#challengePrimaryLabel").textContent = "풀이";
+      $("#challengePrimary").textContent = `${snap.answered}문제`;
+      $("#challengeClockLabel").textContent = "남은 시간";
+      $("#challengeClock").textContent = Game.formatTime(snap.remainingMs ?? Game.SCORE_ATTACK_MS);
+    }
+    $("#challengeCorrect").textContent = snap.correct;
+  }
+
+  function showChallengeReady() {
+    cancelNextQuestion();
+    Game.abort();
+    state.current = null;
+    state.answered = false;
+
+    const readySnap = {
+      answered: 0,
+      correct: 0,
+      elapsedMs: 0,
+      remainingMs: Game.SCORE_ATTACK_MS
+    };
+    updateChallengeHud(readySnap);
+    updateChallengeRecord();
+
+    $("#questionText").textContent = state.playMode === "time"
+      ? "30문제 타임어택을 시작할 준비가 됐습니다."
+      : "60초 스코어어택을 시작할 준비가 됐습니다.";
+    $("#questionBadges").innerHTML = "";
+    $("#answers").innerHTML = "";
+
+    const feedback = $("#feedback");
+    feedback.className = "feedback";
+    feedback.textContent = state.playMode === "time"
+      ? "30문제를 모두 풀면 종료됩니다. 정답 수가 높은 기록이 우선이고, 동점이면 더 빠른 시간이 신기록입니다."
+      : "60초 동안 최대한 많은 정답을 맞히면 됩니다. 최고 정답 수가 신기록으로 저장됩니다.";
+
+    $("#challengeStartBtn").disabled = false;
+    $("#challengeStartBtn").textContent = "게임 시작";
+    syncControls();
+  }
+
+  function finishChallenge(result) {
+    cancelNextQuestion();
+    state.answered = true;
+    document.querySelectorAll(".answer").forEach(button => {
+      button.disabled = true;
+    });
+
+    updateChallengeHud(result);
+    updateChallengeRecord();
+    syncControls();
+
+    $("#challengeStartBtn").disabled = false;
+    $("#challengeStartBtn").textContent = "다시 시작";
+
+    const feedback = $("#feedback");
+    feedback.className = result.newRecord ? "feedback good" : "feedback";
+    const recordPrefix = result.newRecord ? "신기록! " : "";
+
+    if (result.playMode === "time") {
+      feedback.textContent = `${recordPrefix}30문제 완료 · ${result.correct}/30 정답 · ${Game.formatTime(result.elapsedMs)}`;
+    } else {
+      feedback.textContent = `${recordPrefix}60초 종료 · ${result.correct}점 · ${result.answered}문제 풀이`;
+    }
+  }
+
+  function startChallenge() {
+    if (state.playMode === "practice" || Game.isActive()) return;
+
+    cancelNextQuestion();
+    Game.start({
+      playMode: state.playMode,
+      scopeKey: currentScopeKey(),
+      onTick: updateChallengeHud,
+      onFinish: finishChallenge
+    });
+
+    $("#challengeStartBtn").disabled = true;
+    $("#challengeStartBtn").textContent = "진행 중";
+    syncControls();
+    renderQuestion(makeQuestion());
+  }
+
   function checkAnswer(selected, selectedButton) {
     if (state.answered) return;
+    if (state.playMode !== "practice" && !Game.isActive()) return;
     state.answered = true;
 
     const question = state.current;
@@ -237,13 +385,9 @@
     if (correct) {
       state.correct += 1;
       state.streak += 1;
-      feedback.className = "feedback good";
-      feedback.textContent = `정답입니다. ${explain(question)}`;
     } else {
       state.streak = 0;
       state.wrongQueue.unshift(question);
-      feedback.className = "feedback bad";
-      feedback.textContent = `아쉽습니다. 정답은 ${answerLabel(question)}입니다. ${explain(question)}`;
     }
 
     document.querySelectorAll(".answer").forEach(button => {
@@ -255,41 +399,83 @@
     saveStats();
     updateStats();
 
-    if (correct) {
-      celebrate(selectedButton);
-      window.setTimeout(() => renderQuestion(makeQuestion()), 420);
+    if (state.playMode === "practice") {
+      if (correct) {
+        feedback.className = "feedback good";
+        feedback.textContent = `정답입니다. ${explain(question)}`;
+        celebrate(selectedButton);
+        pendingNextTimer = window.setTimeout(() => {
+          pendingNextTimer = null;
+          renderQuestion(makeQuestion());
+        }, 420);
+      } else {
+        feedback.className = "feedback bad";
+        feedback.textContent = `아쉽습니다. 정답은 ${answerLabel(question)}입니다. ${explain(question)}`;
+      }
+      return;
+    }
+
+    feedback.className = correct ? "feedback good" : "feedback bad";
+    feedback.textContent = correct ? "정답!" : `오답 · 정답은 ${answerLabel(question)}`;
+
+    const progress = Game.registerAnswer(correct);
+    if (progress.finished || !Game.isActive()) return;
+
+    pendingNextTimer = window.setTimeout(() => {
+      pendingNextTimer = null;
+      if (Game.isActive()) renderQuestion(makeQuestion());
+    }, correct ? 140 : 280);
+  }
+
+  function prepareCurrentMode() {
+    cancelNextQuestion();
+    if (state.playMode === "practice") {
+      Game.abort();
+      syncControls();
+      renderQuestion(makeQuestion());
+    } else {
+      showChallengeReady();
     }
   }
 
   function setMode(mode) {
-    if (!["rule", "unit", "knowledge"].includes(mode)) return;
+    if (!["rule", "unit", "knowledge"].includes(mode) || Game.isActive()) return;
     state.mode = mode;
+    saveStats();
     syncControls();
-    renderQuestion(makeQuestion(mode));
+    prepareCurrentMode();
   }
 
   function setMatchup(matchup) {
-    if (!MATCHUPS[matchup]) return;
+    if (!MATCHUPS[matchup] || Game.isActive()) return;
     state.matchup = matchup;
     saveStats();
     syncControls();
-    if (state.mode === "unit") renderQuestion(makeUnitQuestion());
+    prepareCurrentMode();
   }
 
   function setKnowledgeRace(race) {
-    if (!["terran", "protoss", "zerg"].includes(race)) return;
+    if (!["terran", "protoss", "zerg"].includes(race) || Game.isActive()) return;
     state.knowledgeRace = race;
     saveStats();
     syncControls();
-    if (state.mode === "knowledge") renderQuestion(makeKnowledgeQuestion());
+    prepareCurrentMode();
   }
 
   function setKnowledgeTopic(topic) {
-    if (!["mixed", "attack", "size"].includes(topic)) return;
+    if (!["mixed", "attack", "size"].includes(topic) || Game.isActive()) return;
     state.knowledgeTopic = topic;
     saveStats();
     syncControls();
-    if (state.mode === "knowledge") renderQuestion(makeKnowledgeQuestion());
+    prepareCurrentMode();
+  }
+
+  function setPlayMode(playMode) {
+    if (!PLAY_MODES.includes(playMode) || Game.isActive()) return;
+    state.playMode = playMode;
+    saveStats();
+    syncControls();
+    prepareCurrentMode();
   }
 
   function reviewWrong() {
@@ -322,17 +508,27 @@
   }
 
   function resetStats() {
-    const ok = confirm("푼 문제 수, 정답률, 연속 정답, 틀린 문제 기록을 모두 초기화할까요?");
+    const ok = confirm("푼 문제 수, 정답률, 연속 정답, 틀린 문제와 타임/스코어 어택 최고 기록을 모두 초기화할까요?");
     if (!ok) return;
 
+    cancelNextQuestion();
+    Game.abort();
+    Game.clearRecords();
     state.total = 0;
     state.correct = 0;
     state.streak = 0;
     state.wrongQueue = [];
     saveStats();
     updateStats();
-    $("#feedback").className = "feedback";
-    $("#feedback").textContent = "기록을 초기화했습니다.";
+    syncControls();
+
+    if (state.playMode === "practice") {
+      $("#feedback").className = "feedback";
+      $("#feedback").textContent = "기록을 초기화했습니다.";
+    } else {
+      showChallengeReady();
+      $("#feedback").textContent = "기록을 초기화했습니다. 게임 시작을 누르면 새 기록에 도전합니다.";
+    }
   }
 
   function init() {
@@ -348,13 +544,18 @@
     document.querySelectorAll(".knowledge-topic-btn").forEach(button => {
       button.addEventListener("click", () => setKnowledgeTopic(button.dataset.knowledgeTopic));
     });
+    document.querySelectorAll(".play-mode-btn").forEach(button => {
+      button.addEventListener("click", () => setPlayMode(button.dataset.playMode));
+    });
+
+    $("#challengeStartBtn").addEventListener("click", startChallenge);
     $("#nextBtn").addEventListener("click", () => renderQuestion(makeQuestion()));
     $("#wrongBtn").addEventListener("click", reviewWrong);
     $("#resetBtn").addEventListener("click", resetStats);
 
     syncControls();
     updateStats();
-    renderQuestion(makeQuestion());
+    prepareCurrentMode();
   }
 
   window.SCQuiz = { init };

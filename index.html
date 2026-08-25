@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#08111f" />
   <title>스타1 상성 훈련소</title>
-  <link rel="stylesheet" href="css/styles.css" />
-  <link rel="stylesheet" href="css/quiz.css" />
+  <!-- 정적 자산을 바꾸면 캐시 버전도 함께 올립니다. -->
+  <link rel="stylesheet" href="css/styles.css?v=20260825-1" />
+  <link rel="stylesheet" href="css/quiz.css?v=20260825-1" />
+  <link rel="stylesheet" href="css/game.css?v=20260825-1" />
 </head>
 <body>
   <main class="app">
@@ -26,6 +28,15 @@
           <button class="tab active" data-mode="rule" type="button">기본 규칙</button>
           <button class="tab" data-mode="unit" type="button">유닛 적용</button>
           <button class="tab" data-mode="knowledge" type="button">유닛 지식</button>
+        </div>
+
+        <div class="play-mode-controls">
+          <p class="play-mode-title">플레이 방식</p>
+          <div class="play-mode-grid" role="group" aria-label="플레이 방식">
+            <button class="play-mode-btn active" data-play-mode="practice" type="button"><strong>연습</strong><small>기존 방식</small></button>
+            <button class="play-mode-btn" data-play-mode="time" type="button"><strong>타임어택</strong><small>30문제</small></button>
+            <button class="play-mode-btn" data-play-mode="score" type="button"><strong>스코어어택</strong><small>60초</small></button>
+          </div>
         </div>
 
         <div id="matchupControls" class="matchup-controls" hidden>
@@ -60,6 +71,16 @@
               <button class="knowledge-btn knowledge-topic-btn" data-knowledge-topic="size" type="button">유닛 크기</button>
             </div>
           </div>
+        </div>
+
+        <div id="challengePanel" class="challenge-panel" hidden>
+          <div class="challenge-hud" aria-label="게임 진행 상황">
+            <div class="challenge-stat"><span id="challengePrimaryLabel">진행</span><strong id="challengePrimary">0/30</strong></div>
+            <div class="challenge-stat"><span>정답</span><strong id="challengeCorrect">0</strong></div>
+            <div class="challenge-stat"><span id="challengeClockLabel">시간</span><strong id="challengeClock">0.0초</strong></div>
+          </div>
+          <div class="challenge-record"><span>현재 범위 최고 기록</span><strong id="challengeRecord">기록 없음</strong></div>
+          <button id="challengeStartBtn" class="btn primary challenge-start" type="button">게임 시작</button>
         </div>
 
         <div class="stats" aria-label="퀴즈 통계">
@@ -174,11 +195,12 @@
     </section>
   </main>
 
-  <script src="js/data.js"></script>
-  <script src="js/ui.js"></script>
-  <script src="js/knowledge.js"></script>
-  <script src="js/quiz.js"></script>
-  <script src="js/catalog.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/data.js?v=20260825-1"></script>
+  <script src="js/ui.js?v=20260825-1"></script>
+  <script src="js/knowledge.js?v=20260825-1"></script>
+  <script src="js/game.js?v=20260825-1"></script>
+  <script src="js/quiz.js?v=20260825-1"></script>
+  <script src="js/catalog.js?v=20260825-1"></script>
+  <script src="js/app.js?v=20260825-1"></script>
 </body>
 </html>
